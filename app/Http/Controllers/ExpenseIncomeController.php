@@ -124,6 +124,8 @@ class ExpenseIncomeController extends Controller
                     'id_villa' => $request->id_villa,
                     'title' => $request->title,
                     'amount' => $request->amount,
+                    'name' => $request->name,
+                    'nigt_duration' => $request->nigt_duration,
                     'category' => $request->category,
                     'desc' => $request->desc,
                 ]);

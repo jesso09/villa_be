@@ -12,6 +12,8 @@ class income extends Model
         'id_villa',
         'title',
         'amount',
+        'name',
+        'nigt_duration',
         'category',
         'desc',
     ];

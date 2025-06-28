@@ -16,6 +16,8 @@ return new class extends Migration
             $table->foreignId('id_villa')->constrained('villas')->onUpdate('cascade')->onDelete('cascade');
             $table->string('title')->nullable();
             $table->string('amount');
+            $table->string('name')->nullable();
+            $table->string('nigt_duration')->nullable();
             $table->string('category')->nullable();
             $table->longText('desc')->nullable();
             $table->timestamps();
