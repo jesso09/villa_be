@@ -102,6 +102,7 @@ class ExpenseIncomeController extends Controller
                     'amount' => $request->amount,
                     'category' => $request->category,
                     'desc' => $request->desc,
+                    'created_at' => $request->created_at,
                 ]);
                 if ($request->picture != null) {
                     $originalName = $request->picture->getClientOriginalName();
@@ -128,6 +129,7 @@ class ExpenseIncomeController extends Controller
                     'nigt_duration' => $request->nigt_duration,
                     'category' => $request->category,
                     'desc' => $request->desc,
+                    'created_at' => $request->created_at,
                 ]);
                 if ($request->picture != null) {
                     $originalName = $request->picture->getClientOriginalName();

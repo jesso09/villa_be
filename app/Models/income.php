@@ -16,6 +16,7 @@ class income extends Model
         'nigt_duration',
         'category',
         'desc',
+        'created_at',
     ];
 
     public function pictures(){

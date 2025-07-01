@@ -14,6 +14,7 @@ class expense extends Model
         'amount',
         'category',
         'desc',
+        'created_at',
     ];
 
     public function pictures(){
