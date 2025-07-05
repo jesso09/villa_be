@@ -50,9 +50,90 @@ class AbsentController extends Controller
             ], 201);
         }
 
-
         return response([
             'message' => 'Failed Add Data',
         ], status: 400);
+    }
+
+    public function update(Request $request, $id)
+    {
+        // Validasi input
+        $validator = Validator::make($request->all(), [
+            'id_villa' => 'required',
+            'title' => 'required',
+            'date' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response(['message' => 'Invalid input', 'errors' => $validator->errors()], 400);
+        }
+
+        try {
+            $incomeData = absent::find($id);
+
+            $oldData = $incomeData;
+
+            if (!$oldData) {
+                return response(['message' => 'Data not found'], 404);
+            }
+
+            // Jika type tidak berubah, update normal
+            $updateFields = ['id_villa', 'title', 'date',];
+
+            foreach ($updateFields as $field) {
+                if ($request->has($field)) {
+                    $oldData->{$field} = $request->{$field};
+                }
+            }
+
+            if ($oldData->save()) {
+                return response([
+                    'message' => 'Data updated successfully',
+                    'data' => $oldData
+                ], 200);
+            }
+
+            return response(['message' => 'Failed to update data'], 500);
+
+        } catch (\Exception $e) {
+            return response([
+                'message' => 'An error occurred',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    public function destroy($id)
+    {
+    
+        try {
+            $targetData = absent::find($id);
+            $notFoundMessage = 'Data not found';
+
+            if (is_null($targetData)) {
+                return response([
+                    'message' => $notFoundMessage,
+                    'data' => null
+                ], 404);
+            }
+
+            if ($targetData->delete()) {
+                return response([
+                    'message' => 'Data deleted successfully',
+                    'data' => $targetData
+                ], 200);
+            }
+
+            return response([
+                'message' => 'Failed to delete data',
+                'data' => null
+            ], 500);
+
+        } catch (\Exception $e) {
+            return response([
+                'message' => 'An error occurred while deleting data',
+                'error' => $e->getMessage(),
+                'data' => null
+            ], 500);
+        }
     }
 }

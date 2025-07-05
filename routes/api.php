@@ -3,6 +3,7 @@
 use App\Http\Controllers\AbsentController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\ExpenseIncomeController;
+use App\Http\Controllers\NoteController;
 use App\Http\Controllers\PDFController;
 use App\Http\Controllers\PictureController;
 use App\Http\Controllers\VillaController;
@@ -42,7 +43,15 @@ Route::group(['prefix' => 'expenseincome', 'middleware' => ['verify.signature']]
 Route::group(['prefix' => 'absent', 'middleware' => ['verify.signature']], function () {
     Route::get('index/{id}', [AbsentController::class, 'index']);
     Route::post('post', [AbsentController::class, 'store']);
-    // Tambahkan route lainnya di sini
+    Route::post('update/{id}', [AbsentController::class, 'update']);
+    Route::post('delete/{id}', [AbsentController::class, 'destroy']);
+});
+
+Route::group(['prefix' => 'notes', 'middleware' => ['verify.signature']], function () {
+    Route::get('index/{id}', [NoteController::class, 'index']);
+    Route::post('post', [NoteController::class, 'store']);
+    Route::post('update/{id}', [NoteController::class, 'update']);
+    Route::post('delete/{id}', [NoteController::class, 'destroy']);
 });
 
 Route::group(['prefix' => 'schedule', 'middleware' => ['verify.signature']], function () {
