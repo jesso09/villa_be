@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Models\expense;
 use App\Models\income;
+use App\Models\picture;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -163,46 +164,85 @@ class ExpenseIncomeController extends Controller
             'amount' => 'required|numeric',
             'type' => 'required|in:expense,income',
             'picture' => 'nullable|mimes:jpeg,png,jpg,gif|max:50000',
-        ], [
-            'picture.mimes' => 'Format gambar yang diperbolehkan: jpeg, png, jpg, gif.',
         ]);
 
         if ($validator->fails()) {
-            return response([
-                'message' => 'Invalid input data',
-                'errors' => $validator->errors()
-            ], 400);
+            return response(['message' => 'Invalid input', 'errors' => $validator->errors()], 400);
         }
 
         try {
-            // Tentukan model berdasarkan type
-            $model = $request->type === 'income' ? Income::class : Expense::class;
-            $data = $model::with('pictures')->find($id);
+            // Cari data lama
+            $incomeData = Income::with('pictures')->find($id);
+            $expenseData = Expense::with('pictures')->find($id);
 
-            if (!$data) {
-                return response([
-                    'message' => 'Data not found',
-                    'data' => null
-                ], 404);
+            $oldData = $incomeData ?? $expenseData;
+            $oldType = $incomeData ? 'income' : 'expense';
+
+            if (!$oldData) {
+                return response(['message' => 'Data not found'], 404);
             }
 
-            // Update data utama
-            $updateFields = [
-                'id_villa',
-                'title',
-                'amount',
-                'category',
-                'desc',
-                'created_at'
-            ];
+            // Jika type berubah
+            if ($oldType !== $request->type) {
+                // Buat data baru
+                $newModel = $request->type === 'income' ? new Income() : new Expense();
 
+                // Salin atribut
+                $fields = ['id_villa', 'title', 'amount', 'category', 'desc', 'created_at'];
+                if ($request->type === 'income') {
+                    $fields = array_merge($fields, ['name', 'nigt_duration']);
+                }
+
+                foreach ($fields as $field) {
+                    $newModel->{$field} = $request->has($field) ? $request->{$field} : $oldData->{$field};
+                }
+
+                $newModel->save();
+
+                // Update relasi gambar
+                if ($oldData->pictures->isNotEmpty()) {
+                    foreach ($oldData->pictures as $picture) {
+                        // Pindahkan file
+                        $oldPath = "public/{$oldType}/{$picture->generated_name}";
+                        $newPath = "public/{$request->type}/{$picture->generated_name}";
+
+                        if (Storage::exists($oldPath)) {
+                            Storage::move($oldPath, $newPath);
+                        }
+
+                        // Update kolom relasi
+                        if ($request->type === 'income') {
+                            $picture->update([
+                                'id_income' => $newModel->id,
+                                'id_expense' => null
+                            ]);
+                        } else {
+                            $picture->update([
+                                'id_expense' => $newModel->id,
+                                'id_income' => null
+                            ]);
+                        }
+                    }
+                }
+
+                // Hapus data lama
+                $oldData->delete();
+
+                return response([
+                    'message' => 'Data successfully changed type',
+                    'data' => $newModel
+                ], 200);
+            }
+
+            // Jika type tidak berubah, update normal
+            $updateFields = ['id_villa', 'title', 'amount', 'category', 'desc', 'created_at'];
             if ($request->type === 'income') {
                 $updateFields = array_merge($updateFields, ['name', 'nigt_duration']);
             }
 
             foreach ($updateFields as $field) {
                 if ($request->has($field)) {
-                    $data->{$field} = $request->{$field};
+                    $oldData->{$field} = $request->{$field};
                 }
             }
 
@@ -212,45 +252,38 @@ class ExpenseIncomeController extends Controller
                 $originalName = $file->getClientOriginalName();
                 $generatedName = 'activity-' . time() . '.' . $file->extension();
 
-                // Jika sudah ada gambar, update yang sudah ada
-                if ($data->pictures->isNotEmpty()) {
-                    $picture = $data->pictures->first();
-
-                    // Hapus file lama
-                    $oldFilePath = "public/{$request->type}/{$picture->generated_name}";
-                    if (Storage::exists($oldFilePath)) {
-                        Storage::delete($oldFilePath);
+                // Hapus gambar lama jika ada
+                if ($oldData->pictures->isNotEmpty()) {
+                    foreach ($oldData->pictures as $picture) {
+                        $filePath = "public/{$request->type}/{$picture->generated_name}";
+                        if (Storage::exists($filePath)) {
+                            Storage::delete($filePath);
+                        }
+                        $picture->delete();
                     }
-
-                    // Update record gambar yang sudah ada
-                    $picture->update([
-                        'generated_name' => $generatedName,
-                        'title' => $originalName,
-                        // field lain yang perlu diupdate
-                    ]);
-                } else {
-                    // Jika belum ada gambar, buat baru
-                    $data->pictures()->create([
-                        'generated_name' => $generatedName,
-                        'title' => $originalName,
-                    ]);
                 }
 
-                // Simpan file baru
+                // Simpan gambar baru
                 $file->storeAs("public/{$request->type}", $generatedName);
+
+                // Buat relasi baru
+                $pictureData = [
+                    'generated_name' => $generatedName,
+                    'title' => $originalName,
+                    'id_' . $request->type => $oldData->id
+                ];
+
+                picture::create($pictureData);
             }
 
-            if ($data->save()) {
+            if ($oldData->save()) {
                 return response([
-                    'message' => ucfirst($request->type) . ' updated successfully',
-                    'data' => $data
+                    'message' => 'Data updated successfully',
+                    'data' => $oldData
                 ], 200);
             }
 
-            return response([
-                'message' => 'Failed to update ' . $request->type,
-                'data' => null
-            ], 500);
+            return response(['message' => 'Failed to update data'], 500);
 
         } catch (\Exception $e) {
             return response([
@@ -259,7 +292,6 @@ class ExpenseIncomeController extends Controller
             ], 500);
         }
     }
-
     public function destroy(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
