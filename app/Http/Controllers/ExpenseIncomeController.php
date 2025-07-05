@@ -40,6 +40,61 @@ class ExpenseIncomeController extends Controller
             'data' => $combined
         ], 200);
     }
+    
+    public function getData(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|in:expense,income',
+        ]);
+
+        if ($validator->fails()) {
+            return response([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+                'data' => null
+            ], 400);
+        }
+
+        try {
+            switch ($request->type) {
+                case 'expense':
+                    $targetData = Expense::with('pictures')->find($id);
+                    $notFoundMessage = 'Expense data not found';
+                    break;
+
+                case 'income':
+                    $targetData = Income::with('pictures')->find($id);
+                    $notFoundMessage = 'Income data not found';
+                    break;
+            }
+
+            if (is_null($targetData)) {
+                return response([
+                    'message' => $notFoundMessage,
+                    'data' => null
+                ], 404);
+            }
+
+            if ($targetData) {
+                return response([
+                    'message' => ucfirst($request->type) . ' data found',
+                    'data' => $targetData
+                ], 200);
+            }
+
+            return response([
+                'message' => 'Failed to delete ' . $request->type,
+                'data' => null
+            ], 500);
+
+        } catch (\Exception $e) {
+            return response([
+                'message' => 'An error occurred while deleting data',
+                'error' => $e->getMessage(),
+                'data' => null
+            ], 500);
+        }
+    }
 
 
     public function indexIncome($idVilla)

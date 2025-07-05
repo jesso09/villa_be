@@ -34,6 +34,7 @@ Route::group(['prefix' => 'expenseincome', 'middleware' => ['verify.signature']]
     Route::get('income/{id}', [ExpenseIncomeController::class, 'indexIncome']);
     Route::get('expense/{id}', [ExpenseIncomeController::class, 'indexExpense']);
     Route::get('activity/{id}', [ExpenseIncomeController::class, 'expenseIncomeActivity']);
+    Route::get('show/{id}', [ExpenseIncomeController::class, 'getData']);
     Route::post('post', [ExpenseIncomeController::class, 'store']);
     Route::post('update/{id}', [ExpenseIncomeController::class, 'update']);
     Route::post('delete/{id}', [ExpenseIncomeController::class, 'destroy']);
@@ -45,6 +46,7 @@ Route::group(['prefix' => 'absent', 'middleware' => ['verify.signature']], funct
     Route::post('post', [AbsentController::class, 'store']);
     Route::post('update/{id}', [AbsentController::class, 'update']);
     Route::post('delete/{id}', [AbsentController::class, 'destroy']);
+    Route::get('show/{id}', [AbsentController::class, 'getData']);
 });
 
 Route::group(['prefix' => 'notes', 'middleware' => ['verify.signature']], function () {
@@ -52,6 +54,7 @@ Route::group(['prefix' => 'notes', 'middleware' => ['verify.signature']], functi
     Route::post('post', [NoteController::class, 'store']);
     Route::post('update/{id}', [NoteController::class, 'update']);
     Route::post('delete/{id}', [NoteController::class, 'destroy']);
+    Route::get('show/{id}', [NoteController::class, 'getData']);
 });
 
 Route::group(['prefix' => 'schedule', 'middleware' => ['verify.signature']], function () {

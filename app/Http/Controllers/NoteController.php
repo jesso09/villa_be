@@ -25,6 +25,35 @@ class NoteController extends Controller
         ], 200);
     }
 
+    public function getData($id)
+    {
+        try {
+            $targetData = note::find($id);
+            $notFoundMessage = 'Expense data not found';
+            
+            if (is_null($targetData)) {
+                return response([
+                    'message' => $notFoundMessage,
+                    'data' => null
+                ], 404);
+            }
+
+            if ($targetData) {
+                return response([
+                    'message' => 'Data found',
+                    'data' => $targetData
+                ], 200);
+            }
+
+        } catch (\Exception $e) {
+            return response([
+                'message' => 'An error occurred while deleting data',
+                'error' => $e->getMessage(),
+                'data' => null
+            ], 500);
+        }
+    }
+
     public function store(Request $request)
     {
         // Validasi Formulir
