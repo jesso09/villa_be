@@ -4,6 +4,7 @@ use App\Http\Controllers\AbsentController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\ExpenseIncomeController;
 use App\Http\Controllers\PDFController;
+use App\Http\Controllers\PictureController;
 use App\Http\Controllers\VillaController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,7 @@ Route::group(['prefix' => 'expenseincome', 'middleware' => ['verify.signature']]
     Route::post('post', [ExpenseIncomeController::class, 'store']);
     Route::post('update/{id}', [ExpenseIncomeController::class, 'update']);
     Route::post('delete/{id}', [ExpenseIncomeController::class, 'destroy']);
+    Route::post('delete-pict/{id}', [PictureController::class, 'destroy']);
 });
 
 Route::group(['prefix' => 'absent', 'middleware' => ['verify.signature']], function () {
