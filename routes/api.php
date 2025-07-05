@@ -33,7 +33,8 @@ Route::group(['prefix' => 'expenseincome', 'middleware' => ['verify.signature']]
     Route::get('expense/{id}', [ExpenseIncomeController::class, 'indexExpense']);
     Route::get('activity/{id}', [ExpenseIncomeController::class, 'expenseIncomeActivity']);
     Route::post('post', [ExpenseIncomeController::class, 'store']);
-    // Tambahkan route lainnya di sini
+    Route::post('update/{id}', [ExpenseIncomeController::class, 'update']);
+    Route::post('delete/{id}', [ExpenseIncomeController::class, 'destroy']);
 });
 
 Route::group(['prefix' => 'absent', 'middleware' => ['verify.signature']], function () {

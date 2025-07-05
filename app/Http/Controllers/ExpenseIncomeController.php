@@ -154,69 +154,177 @@ class ExpenseIncomeController extends Controller
         }
     }
 
-    // public function destroy($id)
-    // {
-    //     $ideaData = Idea::find($id);
+    public function update(Request $request, $id)
+    {
+        // Validasi input
+        $validator = Validator::make($request->all(), [
+            'id_villa' => 'required',
+            'title' => 'required',
+            'amount' => 'required|numeric',
+            'type' => 'required|in:expense,income',
+            'picture' => 'nullable|mimes:jpeg,png,jpg,gif|max:50000',
+        ], [
+            'picture.mimes' => 'Format gambar yang diperbolehkan: jpeg, png, jpg, gif.',
+        ]);
 
-    //     if (is_null($ideaData)) {
-    //         return response([
-    //             'message' => 'Data not found',
-    //             'data' => null
-    //         ], 404);
-    //     }
+        if ($validator->fails()) {
+            return response([
+                'message' => 'Invalid input data',
+                'errors' => $validator->errors()
+            ], 400);
+        }
 
-    //     if ($ideaData->delete()) {
-    //         return response([
-    //             'message' => 'Successfully delete data',
-    //             'data' => $ideaData
-    //         ], 200);
-    //     }
+        try {
+            // Tentukan model berdasarkan type
+            $model = $request->type === 'income' ? Income::class : Expense::class;
+            $data = $model::with('pictures')->find($id);
 
-    //     return response([
-    //         'message' => 'Failed to delete data',
-    //         'data' => null
-    //     ], 400);
-    // }
+            if (!$data) {
+                return response([
+                    'message' => 'Data not found',
+                    'data' => null
+                ], 404);
+            }
 
-    // public function update(Request $request, $id)
-    // {
-    //     $id_villa = Auth::user()->id;
-    //     $ideaData = Idea::find($id);
+            // Update data utama
+            $updateFields = [
+                'id_villa',
+                'title',
+                'amount',
+                'category',
+                'desc',
+                'created_at'
+            ];
 
-    //     if (is_null($ideaData)) {
-    //         return response([
-    //             'message' => 'Data not found',
-    //             'data' => null
-    //         ], 404);
-    //     }
+            if ($request->type === 'income') {
+                $updateFields = array_merge($updateFields, ['name', 'nigt_duration']);
+            }
 
-    //     $update = $request->all();
-    //     $validator = Validator::make($update, [
-    //         // 'id_user' => 'required',
-    //         'title' => 'required',
-    //         // 'description' => 'required',
-    //         'tgl_pelaksanaan' => 'required',
-    //     ]);
+            foreach ($updateFields as $field) {
+                if ($request->has($field)) {
+                    $data->{$field} = $request->{$field};
+                }
+            }
 
-    //     if ($validator->fails()) {
-    //         return response(['message' => $validator->errors()], 400);
-    //     }
+            // Handle gambar
+            if ($request->hasFile('picture')) {
+                $file = $request->file('picture');
+                $originalName = $file->getClientOriginalName();
+                $generatedName = 'activity-' . time() . '.' . $file->extension();
 
-    //     $ideaData->id_user = $id_user;
-    //     $ideaData->title = $update['title'];
-    //     $ideaData->description = $update['description'];
-    //     $ideaData->tgl_pelaksanaan = $update['tgl_pelaksanaan'];
+                // Jika sudah ada gambar, update yang sudah ada
+                if ($data->pictures->isNotEmpty()) {
+                    $picture = $data->pictures->first();
 
-    //     if ($ideaData->save()) {
-    //         return response([
-    //             'message' => 'Data Updated Success',
-    //             'data' => $ideaData
-    //         ], 200);
-    //     }
+                    // Hapus file lama
+                    $oldFilePath = "public/{$request->type}/{$picture->generated_name}";
+                    if (Storage::exists($oldFilePath)) {
+                        Storage::delete($oldFilePath);
+                    }
 
-    //     return response([
-    //         'message' => 'Failed to update data',
-    //         'data' => null
-    //     ], 400);
-    // }
+                    // Update record gambar yang sudah ada
+                    $picture->update([
+                        'generated_name' => $generatedName,
+                        'title' => $originalName,
+                        // field lain yang perlu diupdate
+                    ]);
+                } else {
+                    // Jika belum ada gambar, buat baru
+                    $data->pictures()->create([
+                        'generated_name' => $generatedName,
+                        'title' => $originalName,
+                    ]);
+                }
+
+                // Simpan file baru
+                $file->storeAs("public/{$request->type}", $generatedName);
+            }
+
+            if ($data->save()) {
+                return response([
+                    'message' => ucfirst($request->type) . ' updated successfully',
+                    'data' => $data
+                ], 200);
+            }
+
+            return response([
+                'message' => 'Failed to update ' . $request->type,
+                'data' => null
+            ], 500);
+
+        } catch (\Exception $e) {
+            return response([
+                'message' => 'An error occurred',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|in:expense,income',
+        ]);
+
+        if ($validator->fails()) {
+            return response([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+                'data' => null
+            ], 400);
+        }
+
+        try {
+            switch ($request->type) {
+                case 'expense':
+                    $targetData = Expense::with('pictures')->find($id);
+                    $storagePath = 'public/expense';
+                    $notFoundMessage = 'Expense data not found';
+                    break;
+
+                case 'income':
+                    $targetData = Income::with('pictures')->find($id);
+                    $storagePath = 'public/income';
+                    $notFoundMessage = 'Income data not found';
+                    break;
+            }
+
+            if (is_null($targetData)) {
+                return response([
+                    'message' => $notFoundMessage,
+                    'data' => null
+                ], 404);
+            }
+
+            // Delete associated pictures
+            if ($targetData->pictures->isNotEmpty()) {
+                foreach ($targetData->pictures as $picture) {
+                    $filePath = $storagePath . '/' . $picture->generated_name;
+                    if (Storage::exists($filePath)) {
+                        Storage::delete($filePath);
+                    }
+                    $picture->delete();
+                }
+            }
+
+            if ($targetData->delete()) {
+                return response([
+                    'message' => ucfirst($request->type) . ' deleted successfully',
+                    'data' => $targetData
+                ], 200);
+            }
+
+            return response([
+                'message' => 'Failed to delete ' . $request->type,
+                'data' => null
+            ], 500);
+
+        } catch (\Exception $e) {
+            return response([
+                'message' => 'An error occurred while deleting data',
+                'error' => $e->getMessage(),
+                'data' => null
+            ], 500);
+        }
+    }
 }
